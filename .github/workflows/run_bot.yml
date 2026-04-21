@@ -1,9 +1,10 @@
 name: NSRCC Saturday Snipe
 on:
   schedule:
-    # Runs at 08:59:45 AM Singapore Time (00:59:45 UTC) every Wednesday
-    - cron: '59 0 * * 3'
-  workflow_dispatch: # This adds a 'Run' button so you can test it NOW
+    # 09:58 UTC is 17:58 (5:58 PM) Singapore Time
+    # This runs every Wednesday to catch the 6pm opening
+    - cron: '58 9 * * 3'
+  workflow_dispatch:
 
 jobs:
   snipe:
