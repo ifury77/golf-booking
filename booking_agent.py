@@ -1,57 +1,81 @@
 import asyncio
 from playwright.async_api import async_playwright
+import datetime
+
+# --- CONFIGURATION ---
+# The Saturday we are targeting is 10 days from the Wednesday booking day.
+# ---------------------
 
 async def book_nsrcc():
     async with async_playwright() as p:
+        # Launching with a specific viewport to ensure buttons are visible
         browser = await p.chromium.launch(headless=True)
-        # Use a realistic User Agent to avoid being blocked as a bot
-        context = await browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        context = await browser.new_context(
+            viewport={'width': 1280, 'height': 800},
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        )
         page = await context.new_page()
 
-        print("Navigating to NSRCC...")
+        print(f"[{datetime.datetime.now()}] Snipe Initialized. Navigating to Login...")
+        
+        # 1. LOGIN
         await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx01Login.aspx")
-
-        # Login
         await page.fill("#txtUserID", "YH24242")
         await page.fill("#txtPassword", "stefan12")
         await page.click("#btnLogin")
         await page.wait_for_load_state("networkidle")
         print("Login Successful.")
 
-        # Navigate to Booking
+        # 2. DATE & COURSE SELECTION
+        # Direct navigation to the selection page to save time
         await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx")
-
-        # Select Morning Filter
+        
+        # Select 'Morning' filter
         try:
-            await page.click("input[value='Morning']")
-            print("Morning filter selected.")
+            await page.click("input[value='Morning']", timeout=3000)
         except:
-            pass
+            print("Morning filter not found, proceeding with default...")
 
-        # COURSE & DATE SELECTION
-        # Note: On Wednesday morning, the Saturday date will appear in the dropdown.
-        # The script will try to click the 07:57 slot for Changi.
+        # 3. SELECT TARGET SLOT (07:57 at Changi)
         try:
-            # Look specifically for the 07:57 radio button
-            # This selector targets the radio button in the row containing '07:57'
-            slot = page.locator("tr", has_text="07:57").locator("input[type='radio']").first
-            await slot.click(timeout=5000)
-            print("07:57 slot selected!")
+            # This selector finds the row with 07:57 and clicks its radio button
+            slot_xpath = "//tr[contains(., '07:57')]//input[@type='radio']"
+            await page.wait_for_selector(slot_xpath, timeout=10000)
+            await page.click(slot_xpath)
+            print("Target slot 07:57 selected.")
             
-            await page.click("#btnNext")
-            
-            # Fill Partners
-            await page.fill("#txtPartner1", "IO06456")
-            await page.fill("#txtPartner2", "SC17122")
-            await page.fill("#txtPartner3", "SG17515")
-            print("Partners filled.")
-
-            # FINAL STEP: Click the 'Book' or 'Confirm' button
-            # await page.click("#btnBook") 
-            print("Booking sequence complete!")
+            # Click 'Next' to move to Partner page
+            # Note: The button is often named 'btnNext' or 'Book' depending on the step
+            await page.click("#btnNext") 
             
         except Exception as e:
-            print(f"Target slot 07:57 not available yet. This is expected if running before Wednesday 9am.")
+            print(f"CRITICAL: Could not find 07:57. Attempting first available morning slot...")
+            try:
+                await page.click("input[type='radio']")
+                await page.click("#btnNext")
+            except:
+                print("No slots available at all.")
+                return
+
+        # 4. PARTNER INPUT
+        print("Filling Partners...")
+        await page.wait_for_selector("#txtPartner1", timeout=5000)
+        await page.fill("#txtPartner1", "IO06456")
+        await page.fill("#txtPartner2", "SC17122")
+        await page.fill("#txtPartner3", "SG17515")
+
+        # 5. FINAL AUTOMATIC CONFIRMATION
+        # This is the 'Point of No Return'
+        print("Finalizing Booking...")
+        
+        # Click the Book/Confirm button
+        # Based on NSRCC portal, the final button is usually 'btnBook' or 'btnConfirm'
+        try:
+            await page.click("#btnBook") # This clicks the confirmation
+            print("BOOKING SUBMITTED SUCCESSFULLY.")
+        except:
+            await page.click("#btnConfirm")
+            print("BOOKING CONFIRMED VIA ALTERNATE BUTTON.")
 
         await browser.close()
 
