@@ -2,8 +2,9 @@ import asyncio
 from playwright.async_api import async_playwright
 import datetime
 
-async def book_nsrcc_holiday():
+async def book_nsrcc():
     async with async_playwright() as p:
+        # Launch browser
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(
             viewport={'width': 1280, 'height': 800},
@@ -18,32 +19,49 @@ async def book_nsrcc_holiday():
         await page.click("#btnLogin")
         await page.wait_for_load_state("networkidle")
         
-        # 2. WAIT FOR 6:00 PM OPENING ON APRIL 29
-        target_date = "01/05/2026 Friday" 
-        print(f"Targeting Public Holiday: {target_date}...")
+        # 2. CALCULATE TARGET (10 Days Ahead)
+        target_dt = datetime.date.today() + datetime.timedelta(days=10)
+        date_str = target_dt.strftime("%d/%m/%Y") # e.g. 01/05/2026
+        print(f"Opening window for: {target_dt.strftime('%A, %d %B')} ({date_str})")
         
+        # 3. REFRESH LOOP (Starts at 5:58 PM, waits for 6:00 PM)
         found = False
-        for _ in range(60): # Retry for 1 minute
+        for _ in range(120): # Try for 2 minutes
             await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx")
-            try:
-                await page.select_option("#ddlBookingDate", label=target_date, timeout=1000)
+            
+            # Look for the date string in the dropdown options
+            options = await page.locator("#ddlBookingDate option").all_inner_texts()
+            match = next((opt for opt in options if date_str in opt), None)
+            
+            if match:
+                await page.select_option("#ddlBookingDate", label=match)
+                print(f"Selected Date: {match}")
                 found = True
                 break
-            except:
-                await asyncio.sleep(1)
+            else:
+                await asyncio.sleep(1) # Refresh every second
         
         if not found:
-            print("Holiday date not yet available.")
+            print("Target date not visible yet.")
             return
 
-        # 3. SELECTION
+        # 4. SLOT & PARTNERS
         try:
-            await page.click("input[value='Morning']")
-            # Select first available morning slot
-            await page.click("input[type='radio']")
+            await page.click("input[value='Morning']", timeout=3000)
+            
+            # Target 07:57 or Fallback
+            slot_xpath = "//tr[contains(., '07:57')]//input[@type='radio']"
+            try:
+                await page.wait_for_selector(slot_xpath, timeout=3000)
+                await page.click(slot_xpath)
+                print("Secured 07:57.")
+            except:
+                print("07:57 taken, grabbing first morning slot.")
+                await page.click("input[type='radio']")
+
             await page.click("input[value='Book']")
             
-            # Partner Input
+            # Partners
             await page.wait_for_selector("#txtPartner1", timeout=5000)
             await page.fill("#txtPartner1", "IO06456")
             await page.fill("#txtPartner2", "SC17122")
@@ -53,11 +71,12 @@ async def book_nsrcc_holiday():
             await page.click("#btnNext")
             await page.wait_for_selector("#btnConfirm", timeout=5000)
             await page.click("#btnConfirm")
-            print(f"SUCCESS: Public Holiday booking submitted for {target_date}!")
+            print("SUCCESS: BOOKING COMPLETE.")
+            
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error during selection: {e}")
 
         await browser.close()
 
 if __name__ == "__main__":
-    asyncio.run(book_nsrcc_holiday())
+    asyncio.run(book_nsrcc())
