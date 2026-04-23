@@ -29,7 +29,7 @@ async def book_nsrcc():
             return
 
         # 2. DYNAMIC DATE CALCULATION (10 Days Ahead)
-        target_dt = datetime.date.today() + datetime.timedelta(days=09)
+        target_dt = datetime.date.today() + datetime.timedelta(days=9)
         date_str = target_dt.strftime("%d/%m/%Y") # Formats as 02/05/2026
         print(f"Targeting Play Date: {target_dt.strftime('%A, %d %B %Y')} ({date_str})")
 
