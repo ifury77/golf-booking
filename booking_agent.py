@@ -1,6 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
 import datetime
+import random  # <--- Make sure this line is here!
 
 async def book_nsrcc():
     async with async_playwright() as p:
