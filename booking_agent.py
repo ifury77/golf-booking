@@ -5,60 +5,87 @@ import random
 
 async def book_nsrcc():
     async with async_playwright() as p:
-        # Launch with automation bypass
-        browser = await p.chromium.launch(headless=True, args=['--disable-blink-features=AutomationControlled'])
+        # 1. DISABLE AUTOMATION FLAGS
+        # We add arguments to prevent the browser from announcing it is a 'headless' bot
+        browser = await p.chromium.launch(headless=True, args=[
+            '--disable-blink-features=AutomationControlled',
+            '--no-sandbox',
+            '--disable-infobars',
+            '--window-position=0,0',
+            '--ignore-certifcate-errors',
+            '--ignore-certifcate-errors-spki-list',
+        ])
+        
+        # 2. CREATE A 'HUMAN' CONTEXT
         context = await browser.new_context(
             viewport={'width': 1920, 'height': 1080},
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            device_scale_factor=1,
+            is_mobile=False,
+            has_touch=False,
+            locale="en-SG",
+            timezone_id="Asia/Singapore"
         )
-        # Hide the 'webdriver' property
-        await context.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+
+        # 3. STEALTH SCRIPT INJECTION
+        # This script deletes the 'webdriver' property and mimics real browser plugins
+        await context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+            window.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['en-SG', 'en-US', 'en'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        """)
         
         page = await context.new_page()
-        print(f"[{datetime.datetime.now()}] Stealth Snipe Started.")
+        print(f"[{datetime.datetime.now()}] Advanced Stealth Snipe Started.")
 
-        # 1. LOGIN PHASE (15 Retries)
+        # 4. PERSISTENT LOGIN PHASE (15 Retries)
         login_success = False
         for attempt in range(15):
             try:
                 print(f"Login Attempt {attempt + 1}...")
+                # Increase timeout to 90s for heavy congestion
                 await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx01Login.aspx", 
-                               timeout=60000, wait_until="networkidle")
+                               timeout=90000, wait_until="domcontentloaded")
                 
-                await page.wait_for_selector("#txtUserID", timeout=30000)
-                await page.type("#txtUserID", "YH24242", delay=random.randint(100, 200))
-                await page.type("#txtPassword", "stefan12", delay=random.randint(100, 200))
+                await page.wait_for_selector("#txtUserID", timeout=45000)
                 
-                await asyncio.sleep(random.uniform(1, 2))
+                # Mimic human typing speeds
+                await page.type("#txtUserID", "YH24242", delay=random.randint(120, 250))
+                await page.type("#txtPassword", "stefan12", delay=random.randint(120, 250))
+                
+                # Small pause to look like a human thinking
+                await asyncio.sleep(random.uniform(1.5, 3.0))
                 await page.click("#btnLogin")
                 
-                await page.wait_for_url("**/e_Trx02Availableflight.aspx", timeout=45000)
-                print("SUCCESS: Logged in.")
+                # Confirm redirection
+                await page.wait_for_url("**/e_Trx02Availableflight.aspx", timeout=60000)
+                print(f"SUCCESS: Logged in on attempt {attempt + 1}!")
                 login_success = True
                 break 
             except Exception:
-                print(f"Attempt {attempt + 1} failed. Retrying...")
+                print(f"Attempt {attempt + 1} blocked/stalled. Clearing context and retrying...")
                 await context.clear_cookies()
-                await asyncio.sleep(random.uniform(2, 4))
+                # Wait longer between retries to avoid IP banning
+                await asyncio.sleep(random.uniform(5, 10)) 
 
         if not login_success:
-            print("CRITICAL: Failed to bypass login filter.")
+            print("CRITICAL: Failed to bypass server firewall.")
             await browser.close()
             return
 
-        # 2. DATE CALCULATION (Targeting Sat, May 9th)
-        # Since today is May 3rd, +6 days = May 9th. 
-        # For a standard Thursday run for the following Sat, use 9.
-        target_dt = datetime.date.today() + datetime.timedelta(days=6)
+        # 5. DATE CALCULATION
+        # Thursday -> Next Saturday = 9 days.
+        target_dt = datetime.date.today() + datetime.timedelta(days=9)
         date_str = target_dt.strftime("%d/%m/%Y") 
         print(f"Targeting Play Date: {date_str}")
 
-        # 3. REFRESH LOOP
+        # 6. REFRESH LOOP
         found = False
-        for i in range(500): 
+        for i in range(800): 
             try:
                 await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx", 
-                               timeout=45000, wait_until="domcontentloaded")
+                               timeout=60000, wait_until="domcontentloaded")
                 options = await page.locator("#ddlBookingDate option").all_inner_texts()
                 match = next((opt for opt in options if date_str in opt), None)
                 
@@ -69,11 +96,36 @@ async def book_nsrcc():
                     break
             except Exception:
                 pass
-            await asyncio.sleep(random.uniform(0.8, 1.5)) 
+            
+            if i % 25 == 0:
+                print(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] Polling...")
+            
+            await asyncio.sleep(random.uniform(0.6, 1.2)) 
 
-        if not found:
-            print(f"Finished polling. Date {date_str} not available.")
-        
+        if found:
+            # Slot Selection Logic
+            await page.click("input[value='Morning']", timeout=60000)
+            await asyncio.sleep(2)
+            
+            target_slot = "//tr[contains(., '07:57')]//input[@type='radio']"
+            if await page.locator(target_slot).count() > 0:
+                await page.click(target_slot)
+                print("Target slot selected.")
+            else:
+                print("Grabbing first available 18-hole morning slot...")
+                await page.locator("//tr[not(contains(., '07:01')) and not(contains(., '07:08'))]//input[@type='radio']").first.click()
+
+            await page.click("input[value='Book']")
+            # Partners
+            await page.wait_for_selector("#txtPartner1", timeout=60000)
+            await page.fill("#txtPartner1", "IO06456")
+            await page.fill("#txtPartner2", "SC17122")
+            await page.fill("#txtPartner3", "SG17515")
+            await page.click("#btnNext")
+            await page.wait_for_selector("#btnConfirm", timeout=60000)
+            await page.click("#btnConfirm")
+            print("BOOKING SUBMITTED.")
+
         await browser.close()
 
 if __name__ == "__main__":
