@@ -8,9 +8,10 @@ import sys
 
 async def book_nsrcc():
     async with async_playwright() as p:
-        print("Launching browser...")
+        print("🚀 Launching NSRCC Sniper...")
+        
         try:
-            # Added 'chromium' specifically for GitHub Actions environment
+            # Launch Chromium with stealth settings
             browser = await p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
@@ -22,47 +23,61 @@ async def book_nsrcc():
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
             )
 
-            # 1. LOAD COOKIES
+            # 1. LOAD & CLEAN COOKIES
             if os.path.exists('cookies.json'):
                 with open('cookies.json', 'r') as f:
-                    cookies = json.load(f)
-                    await context.add_cookies(cookies)
-                print("✅ Successfully loaded session cookies.")
+                    raw_cookies = json.load(f)
+                
+                # Filter cookies for Playwright compatibility
+                formatted_cookies = []
+                for cookie in raw_cookies:
+                    # Only keep fields Playwright understands
+                    clean_cookie = {
+                        'name': cookie['name'],
+                        'value': cookie['value'],
+                        'domain': cookie['domain'],
+                        'path': cookie['path']
+                    }
+                    if 'secure' in cookie: clean_cookie['secure'] = cookie['secure']
+                    if 'httpOnly' in cookie: clean_cookie['httpOnly'] = cookie['httpOnly']
+                    if 'sameSite' in cookie: clean_cookie['sameSite'] = cookie['sameSite']
+                    formatted_cookies.append(clean_cookie)
+                
+                await context.add_cookies(formatted_cookies)
+                print("✅ Cookies cleaned and loaded.")
             else:
-                print("❌ CRITICAL ERROR: cookies.json not found in root directory!")
+                print("❌ ERROR: cookies.json not found!")
                 sys.exit(1)
 
             page = await context.new_page()
             
-            # 2. DIRECT ACCESS
-            print(f"[{datetime.datetime.now()}] Navigating to booking page...")
+            # 2. NAVIGATION
+            print("Navigating to NSRCC...")
             await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx", 
                            timeout=60000, wait_until="domcontentloaded")
             
-            # Check if session is actually valid
             if "Trx01Login" in page.url:
-                print("❌ SESSION EXPIRED: The cookies in cookies.json are no longer valid. Refresh them!")
+                print("❌ SESSION EXPIRED: Update your cookies.json!")
                 sys.exit(1)
             else:
-                print("✅ Session validated. Proceeding.")
+                print("✅ Login Bypassed Successfully.")
 
-            # 3. DATE SETTINGS (Testing for tomorrow)
+            # 3. DATE TARGETING (Testing for tomorrow)
             target_dt = datetime.date.today() + datetime.timedelta(days=1)
             date_str = target_dt.strftime("%d/%m/%Y") 
-            print(f"Targeting Play Date: {date_str}")
+            print(f"🎯 Target Date: {date_str}")
 
-            # 4. REFRESH & POLL
-            # Shortened loop for testing purposes
-            for i in range(5): 
-                print(f"Polling attempt {i+1}...")
+            # 4. REFRESH LOOP
+            for i in range(1, 4):
+                print(f"Attempt {i}: Checking availability...")
                 await page.reload(wait_until="domcontentloaded")
-                await asyncio.sleep(random.uniform(1, 2))
+                await asyncio.sleep(2)
 
-            print("Test run completed. Check screenshot in artifacts if needed.")
+            print("🏁 Test run finished.")
             await browser.close()
 
         except Exception as e:
-            print(f"❌ AN ERROR OCCURRED: {e}")
+            print(f"❌ CRASHED: {e}")
             sys.exit(1)
 
 if __name__ == "__main__":
