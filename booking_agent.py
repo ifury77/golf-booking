@@ -8,7 +8,7 @@ import sys
 
 async def book_nsrcc():
     async with async_playwright() as p:
-        print("🚀 Launching NSRCC Sniper...")
+        print("🚀 Launching NSRCC Sniper for Wednesday Drop...")
         
         try:
             browser = await p.chromium.launch(headless=True, args=[
@@ -29,59 +29,80 @@ async def book_nsrcc():
                 
                 formatted_cookies = []
                 for cookie in raw_cookies:
-                    # Basic required fields
                     clean_cookie = {
                         'name': cookie['name'],
                         'value': cookie['value'],
                         'domain': cookie['domain'],
                         'path': cookie['path']
                     }
-                    
-                    # Optional fields with strict formatting for Playwright
-                    if 'secure' in cookie: 
-                        clean_cookie['secure'] = bool(cookie['secure'])
-                    if 'httpOnly' in cookie: 
-                        clean_cookie['httpOnly'] = bool(cookie['httpOnly'])
-                    
-                    # FIX FOR THE CRASH: Force SameSite to correct casing
+                    if 'secure' in cookie: clean_cookie['secure'] = bool(cookie['secure'])
+                    if 'httpOnly' in cookie: clean_cookie['httpOnly'] = bool(cookie['httpOnly'])
                     if 'sameSite' in cookie and cookie['sameSite']:
                         ss_value = str(cookie['sameSite']).capitalize()
                         if ss_value in ['Strict', 'Lax', 'None']:
                             clean_cookie['sameSite'] = ss_value
-
                     formatted_cookies.append(clean_cookie)
                 
                 await context.add_cookies(formatted_cookies)
-                print("✅ Cookies cleaned and sameSite fixed.")
+                print("✅ Cookies loaded.")
             else:
-                print("❌ ERROR: cookies.json not found!")
+                print("❌ ERROR: cookies.json missing!")
                 sys.exit(1)
 
             page = await context.new_page()
             
             # 2. NAVIGATION
-            print("Navigating to NSRCC...")
+            print("Navigating to NSRCC Available Flights...")
             await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx", 
                            timeout=60000, wait_until="domcontentloaded")
             
             if "Trx01Login" in page.url:
-                print("❌ SESSION EXPIRED: Update your cookies.json!")
+                print("❌ SESSION EXPIRED: You MUST update cookies.json on Wednesday morning!")
                 sys.exit(1)
-            else:
-                print("✅ Login Bypassed Successfully.")
+            
+            # 3. SET TARGET DATE TO 23/05/2026
+            # If today is Wednesday (13th), days=10 targets the 23rd.
+            target_date = "23/05/2026"
+            print(f"🎯 Target Date set to: {target_date}")
 
-            # 3. DATE TARGETING (Testing for tomorrow)
-            target_dt = datetime.date.today() + datetime.timedelta(days=1)
-            date_str = target_dt.strftime("%d/%m/%Y") 
-            print(f"🎯 Target Date: {date_str}")
-
-            # 4. REFRESH LOOP
-            for i in range(1, 4):
-                print(f"Attempt {i}: Checking availability...")
+            # 4. POLLING LOOP (Wait for 6:00 PM Release)
+            found = False
+            for i in range(1, 500): # Polls for ~15 minutes
                 await page.reload(wait_until="domcontentloaded")
-                await asyncio.sleep(2)
+                options = await page.locator("#ddlBookingDate option").all_inner_texts()
+                
+                if any(target_date in opt for opt in options):
+                    print(f"🟢 DATE FOUND at attempt {i}!")
+                    await page.select_option("#ddlBookingDate", label=[opt for opt in options if target_date in opt][0])
+                    found = True
+                    break
+                
+                if i % 10 == 0: print(f"Still polling... (Attempt {i})")
+                await asyncio.sleep(random.uniform(0.5, 1.2))
 
-            print("🏁 Test run finished.")
+            if found:
+                # 5. SELECT SLOT & FILL DETAILS
+                await page.click("input[value='Morning']")
+                await asyncio.sleep(1)
+                
+                # Clicks the first available morning radio button
+                slots = page.locator("input[type='radio']")
+                if await slots.count() > 0:
+                    await slots.first.click()
+                    await page.click("input[value='Book']")
+                    
+                    # Fill Partners
+                    await page.wait_for_selector("#txtPartner1", timeout=5000)
+                    await page.fill("#txtPartner1", "IO06456")
+                    await page.fill("#txtPartner2", "SC17122")
+                    await page.fill("#txtPartner3", "SG17515")
+                    
+                    # 6. FINAL CONFIRMATION
+                    await page.click("#btnNext")
+                    await page.wait_for_selector("#btnConfirm")
+                    await page.click("#btnConfirm")
+                    print("🏆 BOOKING COMPLETE!")
+            
             await browser.close()
 
         except Exception as e:
