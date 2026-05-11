@@ -93,7 +93,7 @@ async def book_nsrcc():
                     
                     # Fill Partners
                     await page.wait_for_selector("#txtPartner1", timeout=5000)
-                    await page.fill("#txtPartner1", "IO06456")
+                    await page.fill("#txtPartner1", "OK15000")
                     await page.fill("#txtPartner2", "SC17122")
                     await page.fill("#txtPartner3", "SG17515")
                     
