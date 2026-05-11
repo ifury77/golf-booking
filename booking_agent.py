@@ -11,7 +11,6 @@ async def book_nsrcc():
         print("🚀 Launching NSRCC Sniper...")
         
         try:
-            # Launch Chromium with stealth settings
             browser = await p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
@@ -28,23 +27,32 @@ async def book_nsrcc():
                 with open('cookies.json', 'r') as f:
                     raw_cookies = json.load(f)
                 
-                # Filter cookies for Playwright compatibility
                 formatted_cookies = []
                 for cookie in raw_cookies:
-                    # Only keep fields Playwright understands
+                    # Basic required fields
                     clean_cookie = {
                         'name': cookie['name'],
                         'value': cookie['value'],
                         'domain': cookie['domain'],
                         'path': cookie['path']
                     }
-                    if 'secure' in cookie: clean_cookie['secure'] = cookie['secure']
-                    if 'httpOnly' in cookie: clean_cookie['httpOnly'] = cookie['httpOnly']
-                    if 'sameSite' in cookie: clean_cookie['sameSite'] = cookie['sameSite']
+                    
+                    # Optional fields with strict formatting for Playwright
+                    if 'secure' in cookie: 
+                        clean_cookie['secure'] = bool(cookie['secure'])
+                    if 'httpOnly' in cookie: 
+                        clean_cookie['httpOnly'] = bool(cookie['httpOnly'])
+                    
+                    # FIX FOR THE CRASH: Force SameSite to correct casing
+                    if 'sameSite' in cookie and cookie['sameSite']:
+                        ss_value = str(cookie['sameSite']).capitalize()
+                        if ss_value in ['Strict', 'Lax', 'None']:
+                            clean_cookie['sameSite'] = ss_value
+
                     formatted_cookies.append(clean_cookie)
                 
                 await context.add_cookies(formatted_cookies)
-                print("✅ Cookies cleaned and loaded.")
+                print("✅ Cookies cleaned and sameSite fixed.")
             else:
                 print("❌ ERROR: cookies.json not found!")
                 sys.exit(1)
