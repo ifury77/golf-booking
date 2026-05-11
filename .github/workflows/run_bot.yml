@@ -1,23 +1,36 @@
 name: NSRCC Multi-Day Sniper
+
 on:
-  schedule:
-    # 09:50 UTC is 5:50 PM Singapore Time.
-    # This runs every Wednesday and Thursday.
-    - cron: '50 9 * * 3,4'
-  workflow_dispatch: 
+  # Allows you to run the bot manually from the Actions tab
+  workflow_dispatch:
+  # Optional: Uncomment the lines below to run automatically every day at 5:59 PM (SGT)
+  # schedule:
+  #   - cron: '59 09 * * *' # 09:59 UTC is 17:59 Singapore Time
 
 jobs:
   snipe:
     runs-on: ubuntu-latest
+    
+    # This environment variable removes that Node.js warning you saw earlier
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install Tools
+
+      - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install playwright
-          playwright install chromium
-      - name: Execute
+          # This command installs the actual Chromium browser the script needs
+          playwright install --with-deps chromium
+
+      - name: Execute Snipe
+        # This runs your Python script using the cookies.json in your root folder
         run: python booking_agent.py
