@@ -49,7 +49,7 @@ async def book_nsrcc():
 
         # 3. DATE CALCULATION
         # Logic: Current Date + 6 days targets next Saturday (May 9th) from today (May 3rd).
-        target_dt = datetime.date.today() + datetime.timedelta(days=6)
+        target_dt = datetime.date.today() + datetime.timedelta(days=1)
         date_str = target_dt.strftime("%d/%m/%Y") 
         print(f"Targeting Play Date: {date_str}")
 
