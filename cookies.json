@@ -1,0 +1,52 @@
+[
+    {
+        "domain": "myresort.nsrcc.com.sg",
+        "hostOnly": true,
+        "httpOnly": true,
+        "name": "TS01dc4fc6",
+        "path": "/",
+        "sameSite": "strict",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "010e7b7cc2c82a7e124e880501a41bbe9d14585f3befd2f91a184ab3694d326190b80cbca302d240af11d547dcc15b0269b583e25f"
+    },
+    {
+        "domain": "myresort.nsrcc.com.sg",
+        "expirationDate": 1778489140.721745,
+        "hostOnly": true,
+        "httpOnly": true,
+        "name": "ASP.NET_SessionId",
+        "path": "/",
+        "sameSite": "strict",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "lvclrx554u02t045442jtv45"
+    },
+    {
+        "domain": ".myresort.nsrcc.com.sg",
+        "hostOnly": false,
+        "httpOnly": true,
+        "name": "7b452",
+        "path": "/",
+        "sameSite": "strict",
+        "secure": true,
+        "session": true,
+        "storeId": null,
+        "value": "eRYz8HEwbYmQsbQKpE6N9da/FtUqobp7BgMWfZLFCLFVInzRouxsJo52XbZomldhYS1sVtc/pt+FptFjHPLrjK3B4oY7TCqiS9op3BNee3y7Y7bgkulnOJOjmxvDITQc+KVVC2+vzxKoQJQfeGO9a0Nj/xq8UO5WQ4fX8zP+19pm0MFC6EG22HQfx9uKKtROLr5u3ye6PolE+0/IiU8zhykuCxs="
+    },
+    {
+        "domain": "myresort.nsrcc.com.sg",
+        "expirationDate": 1813048062.360576,
+        "hostOnly": true,
+        "httpOnly": true,
+        "name": "OClmoOot",
+        "path": "/",
+        "sameSite": "strict",
+        "secure": true,
+        "session": false,
+        "storeId": null,
+        "value": "AxJqaaCbAQAAeOHrXmtF-QkxEUk5MBQd170e7XWCILjbDJzxO6ouVmj7Z_nZATq50eKucmbRwH8AAEB3AAAAAA|1|0|5ba9880d42a79a495da3f701ea327068fd324ed7"
+    }
+]
