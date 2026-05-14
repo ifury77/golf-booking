@@ -11,6 +11,7 @@ async def book_nsrcc():
         print("🚀 Launching AGGRESSIVE NSRCC Sniper...")
         
         try:
+            # 1. BROWSER SETUP
             browser = await p.chromium.launch(headless=True, args=[
                 '--disable-blink-features=AutomationControlled',
                 '--no-sandbox',
@@ -22,7 +23,7 @@ async def book_nsrcc():
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
             )
 
-            # LOAD COOKIES
+            # 2. LOAD COOKIES
             if os.path.exists('cookies.json'):
                 with open('cookies.json', 'r') as f:
                     raw_cookies = json.load(f)
@@ -47,58 +48,74 @@ async def book_nsrcc():
             await page.goto("https://myresort.nsrcc.com.sg/NsrccGolfProject/eGolf/e_Trx02Availableflight.aspx", timeout=60000)
             
             if "Trx01Login" in page.url:
-                print("❌ SESSION EXPIRED!")
+                print("❌ SESSION EXPIRED! Refresh cookies.json now.")
                 sys.exit(1)
+            else:
+                print("✅ Login Bypassed Successfully.")
 
-            # TARGET DATE - Change this for your next target!
-            target_date = "24/05/2026" 
+            # 3. TARGET DATE FOR MAY 30th
+            target_date = "30/05/2026" 
             print(f"🎯 Target Date: {target_date}")
 
-            # POLLING LOOP (High Speed)
+            # 4. AGGRESSIVE POLLING LOOP
             found = False
-            for i in range(1, 1500): # Increased attempts for early start
+            # 2000 attempts at ~0.5s each covers about 15-20 minutes
+            for i in range(1, 2000): 
                 await page.reload(wait_until="domcontentloaded")
                 
-                # Fast check for date
+                # Fast check for date in dropdown
                 options = await page.locator("#ddlBookingDate option").all_inner_texts()
                 match = next((opt for opt in options if target_date in opt), None)
                 
                 if match:
-                    print(f"🟢 FOUND AT {datetime.datetime.now().strftime('%H:%M:%S')}!")
+                    print(f"🟢 DATE RELEASED: {match} (Found at Attempt {i})")
                     await page.select_option("#ddlBookingDate", label=match)
                     found = True
                     break
                 
-                # Rapid-fire polling: Only 0.2 to 0.5 second delay
-                await asyncio.sleep(random.uniform(0.2, 0.5))
+                if i % 50 == 0:
+                    print(f"Still polling... (Attempt {i})")
+                
+                # Rapid polling delay (0.3s to 0.6s)
+                await asyncio.sleep(random.uniform(0.3, 0.6))
 
             if found:
-                # SELECT MORNING & SLOT
-                await page.click("input[value='Morning']", timeout=5000)
-                # Wait for any radio button to appear (the actual slot)
-                await page.wait_for_selector("input[type='radio']", timeout=5000)
+                # 5. SELECT MORNING
+                print("Checking for Morning slots...")
+                await page.click("input[value='Morning']", timeout=10000)
                 
-                slots = page.locator("input[type='radio']")
-                if await slots.count() > 0:
-                    await slots.first.click()
-                    await page.click("input[value='Book']")
+                # Wait for any slot (radio button) to appear
+                try:
+                    await page.wait_for_selector("input[type='radio']", timeout=8000)
+                    slots = page.locator("input[type='radio']")
                     
-                    # FILL PARTNERS
-                    await page.wait_for_selector("#txtPartner1", timeout=5000)
-                    await page.fill("#txtPartner1", "IO06456")
-                    await page.fill("#txtPartner2", "SC17122")
-                    await page.fill("#txtPartner3", "SG17515")
-                    
-                    # FINAL CONFIRM
-                    await page.click("#btnNext")
-                    await page.wait_for_selector("#btnConfirm", timeout=5000)
-                    await page.click("#btnConfirm")
-                    print("🏆 BOOKING COMPLETE!")
+                    if await slots.count() > 0:
+                        await slots.first.click()
+                        print("✅ Slot selected.")
+                        await page.click("input[value='Book']")
+                        
+                        # 6. FILL PARTNERS
+                        print("Filling partner details...")
+                        await page.wait_for_selector("#txtPartner1", timeout=10000)
+                        await page.fill("#txtPartner1", "IO06456")
+                        await page.fill("#txtPartner2", "SC17122")
+                        await page.fill("#txtPartner3", "SG17515")
+                        
+                        # 7. FINAL CONFIRMATION
+                        print("🚀 Submitting final booking...")
+                        await page.click("#btnNext")
+                        await page.wait_for_selector("#btnConfirm", timeout=10000)
+                        await page.click("#btnConfirm")
+                        print("🏆 SUCCESS: Booking confirmed for May 30th!")
+                    else:
+                        print("⚠️ Date found, but no morning slots available.")
+                except:
+                    print("⚠️ Timeout waiting for slot table. Server might be lagging.")
             
             await browser.close()
 
         except Exception as e:
-            print(f"❌ ERROR: {e}")
+            print(f"❌ CRASHED: {e}")
             sys.exit(1)
 
 if __name__ == "__main__":
